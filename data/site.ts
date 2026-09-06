@@ -62,6 +62,15 @@ export const navLinks: NavLink[] = [
 export const brandDescriptor =
   "AI, Computer Vision & Applied Research";
 
+/** Disciplines line under the hero sub-copy. */
+export const heroDisciplines = [
+  "AI",
+  "GenAI",
+  "Computer Vision",
+  "Software",
+  "Research",
+];
+
 /* -------------------------------------------------------------------------- */
 /* Primary CTA                                                                */
 /* -------------------------------------------------------------------------- */
@@ -123,87 +132,184 @@ export const footerLinks: FooterLink[] = [
 ];
 
 /* -------------------------------------------------------------------------- */
+/* Founder                                                                    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Founder profile.
+ *
+ * `photo` is intentionally null: the card renders a clean placeholder
+ * frame until a real image exists. To add one, drop the file in
+ * /public and set `photo` to its path — nothing else needs to change.
+ * Do not add entries here for people who are not actually on the team.
+ */
+export const founder = {
+  name: null as string | null,
+  role: "Founder & AI Researcher",
+  photo: null as string | null,
+  photoAlt: "Founder of Opportunity Lens",
+};
+/* -------------------------------------------------------------------------- */
 /* Services                                                                   */
 /* -------------------------------------------------------------------------- */
 
 export type Service = {
+  /** Display number — the cards are presented as an ordered set, 01-06. */
+  number: string;
   id: string;
   title: string;
-  summary: string;
-  icon:
-    | "brain"
-    | "sparkles"
-    | "scan-eye"
-    | "network"
-    | "stethoscope"
-    | "code"
-    | "workflow"
-    | "megaphone"
-    | "flask-conical";
+  /** One sentence on what the work actually is. No claims, no metrics. */
+  description: string;
+  icon: "sparkles" | "scan-eye" | "code" | "workflow" | "flask-conical" | "globe";
+  /** Capabilities within this area, shown as tags on the card. */
+  tags: string[];
+  /**
+   * Where the card goes. Points at the contact form with the project
+   * type pre-selected — there are no per-service pages yet, and a link
+   * to one would 404 (and be prefetched as a 404 on hover).
+   */
+  href: string;
 };
 
 export const services: Service[] = [
   {
-    id: "artificial-intelligence",
-    title: "Artificial Intelligence",
-    summary:
-      "Custom AI systems designed around a specific business problem, not a generic model.",
-    icon: "brain",
-  },
-  {
-    id: "generative-ai",
-    title: "Generative AI",
-    summary:
-      "Applied generative models for content, design, and product workflows.",
+    number: "01",
+    id: "ai-generative-ai",
+    title: "AI & Generative AI",
+    description:
+      "Language-model systems built around a specific task \u2014 grounded in your own data, with the retrieval and tooling that makes answers usable.",
     icon: "sparkles",
+    tags: [
+      "LLM applications",
+      "RAG systems",
+      "AI agents",
+      "Generative AI",
+      "AI assistants",
+      "AI integration",
+    ],
+    href: "/contact?project=AI%20%26%20Generative%20AI",
   },
   {
+    number: "02",
     id: "computer-vision",
     title: "Computer Vision",
-    summary:
-      "Vision systems that detect, classify, and measure what matters in an image or video feed.",
+    description:
+      "Models that read images and video \u2014 finding, classifying and measuring what matters, from clinical scans to production lines.",
     icon: "scan-eye",
+    tags: [
+      "Image classification",
+      "Object detection",
+      "Image segmentation",
+      "Medical imaging",
+      "OCR",
+      "Visual inspection",
+      "Deep learning",
+    ],
+    href: "/contact?project=Computer%20Vision",
   },
   {
-    id: "machine-learning",
-    title: "Machine Learning",
-    summary:
-      "Predictive and decision models trained and maintained on real production data.",
-    icon: "network",
-  },
-  {
-    id: "medical-ai",
-    title: "Medical AI",
-    summary:
-      "AI tooling for clinical and healthcare workflows, built with domain experts.",
-    icon: "stethoscope",
-  },
-  {
+    number: "03",
     id: "software-development",
     title: "Software Development",
-    summary:
-      "Full-stack product engineering for the applications that carry AI into daily use.",
+    description:
+      "The applications and interfaces that carry a model into daily use, engineered to run reliably once the research is done.",
     icon: "code",
+    tags: [
+      "Web applications",
+      "SaaS platforms",
+      "APIs",
+      "Dashboards",
+      "Automation systems",
+      "Custom software",
+    ],
+    href: "/contact?project=Software%20Development",
   },
   {
+    number: "04",
     id: "ai-automation",
     title: "AI Automation",
-    summary:
-      "Automating operational work end-to-end with agents and orchestration.",
+    description:
+      "Operational work handled end to end \u2014 documents read, data moved, and routine decisions made without a person in the loop.",
     icon: "workflow",
+    tags: [
+      "AI workflows",
+      "Document processing",
+      "RAG automation",
+      "Business assistants",
+      "Workflow automation",
+      "Data pipelines",
+    ],
+    href: "/contact?project=AI%20Automation",
   },
   {
-    id: "digital-marketing",
-    title: "Digital Marketing",
-    summary:
-      "Data-informed growth and marketing for AI-native and traditional businesses alike.",
-    icon: "megaphone",
-  },
-  {
+    number: "05",
     id: "research-rd",
     title: "Research & R&D",
-    summary:
-      "Applied research that keeps client work grounded in the current state of the art.",
+    description:
+      "Applied research for problems without an off-the-shelf answer, run as experiments and prototypes before anything is committed to.",
     icon: "flask-conical",
+    tags: [
+      "AI research",
+      "Computer vision research",
+      "Medical AI",
+      "Machine learning experiments",
+      "Research prototypes",
+      "Technical consulting",
+    ],
+    href: "/contact?project=Research%20%26%20R%26D",
+  },
+  {
+    number: "06",
+    id: "digital-solutions",
+    title: "Digital Solutions",
+    description:
+      "The surface a technical organisation presents to the world, and the measurement that shows whether it is working.",
+    icon: "globe",
+    tags: [
+      "Websites",
+      "SEO",
+      "Digital marketing",
+      "Content strategy",
+      "Analytics",
+      "Digital transformation",
+    ],
+    href: "/contact?project=Digital%20Solutions",
+  },
+];
+/* -------------------------------------------------------------------------- */
+/* Reasons (Why section)                                                      */
+/* -------------------------------------------------------------------------- */
+
+export type Reason = {
+  id: string;
+  title: string;
+  body: string;
+  icon: "microscope" | "target" | "handshake" | "trending-up";
+};
+
+export const reasons: Reason[] = [
+  {
+    id: "research-driven",
+    title: "Research Driven",
+    body: "We bring research thinking into practical technology development.",
+    icon: "microscope",
+  },
+  {
+    id: "practical-ai",
+    title: "Practical AI",
+    body: "We focus on useful AI—not AI for the sake of AI.",
+    icon: "target",
+  },
+  {
+    id: "flexible-collaboration",
+    title: "Flexible Collaboration",
+    body: "Work with us on a prototype, research project, software product or long-term technology initiative.",
+    icon: "handshake",
+  },
+  {
+    id: "built-to-grow",
+    title: "Built to Grow",
+    body: "Start with a focused solution and evolve it as your needs grow.",
+    icon: "trending-up",
   },
 ];

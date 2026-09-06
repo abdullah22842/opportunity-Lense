@@ -1,79 +1,98 @@
 "use client";
 
-import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
-import { Section } from "@/components/ui/Section";
+import { motion, useReducedMotion } from "framer-motion";
+import { ArrowRight } from "lucide-react";
+import { Container } from "@/components/ui/Container";
 import { Button } from "@/components/ui/Button";
-import { siteConfig } from "@/data/site";
-
-const reveal = {
-  hidden: { opacity: 0, y: 14 },
-  visible: (delay: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, delay, ease: [0.22, 1, 0.36, 1] as const },
-  }),
-};
+import { HeroVisual } from "@/components/visuals/HeroVisual";
+import { heroDisciplines, primaryCta } from "@/data/site";
 
 /**
- * Example hero section — demonstrates how /components/sections pieces
- * are composed, including the single ambient hero glow and one
- * orchestrated entrance (not per-element scroll animation). This is
- * scaffolding for the real homepage build, not final hero copy.
+ * Homepage hero.
+ *
+ * Two columns on desktop (copy left, lens visual right), stacked on
+ * mobile with the visual demoted below the actions. One orchestrated
+ * entrance on load — the only non-user-triggered motion here besides
+ * the visual's own ambient loop.
  */
 export function Hero() {
+  const reduce = useReducedMotion();
+
+  const rise = (delay: number) => ({
+    initial: reduce ? false : { opacity: 0, y: 16 },
+    animate: { opacity: 1, y: 0 },
+    transition: {
+      duration: reduce ? 0 : 0.65,
+      delay: reduce ? 0 : delay,
+      ease: [0.22, 1, 0.36, 1] as const,
+    },
+  });
+
   return (
     <div className="surface-glow">
-      <Section
-        className="relative pt-28 sm:pt-36"
-        containerClassName="max-w-[var(--container-max-narrow)] relative z-10"
-      >
-        <motion.p
-          custom={0}
-          initial="hidden"
-          animate="visible"
-          variants={reveal}
-          className="text-sm text-muted"
-        >
-          {siteConfig.name}
-        </motion.p>
+      <Container className="relative z-10 grid items-center gap-14 pt-16 pb-[var(--space-section-y)] lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] lg:gap-16 lg:pt-24">
+        {/* ---------- Copy ---------- */}
+        <div>
+          <motion.h1
+            {...rise(0.05)}
+            className="text-[clamp(2.05rem,1.1rem+2.7vw,2.7rem)]! leading-[1.08]!"
+          >
+            Intelligent Technology.
+            <br />
+            Real-World Impact.
+          </motion.h1>
 
-        <motion.h1
-          custom={0.08}
-          initial="hidden"
-          animate="visible"
-          variants={reveal}
-          className="mt-5"
-        >
-          {siteConfig.tagline}
-        </motion.h1>
+          <motion.p
+            {...rise(0.14)}
+            className="mt-7 max-w-[54ch] text-lg text-ink-soft"
+          >
+            Opportunity Lens builds AI-powered solutions, intelligent software
+            and research-driven technology that help businesses, researchers and
+            organisations turn ideas into practical solutions.
+          </motion.p>
 
-        <motion.p
-          custom={0.16}
-          initial="hidden"
-          animate="visible"
-          variants={reveal}
-          className="mt-6 text-lg text-ink-soft"
-        >
-          {siteConfig.description}
-        </motion.p>
+          <motion.ul
+            {...rise(0.22)}
+            className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
+          >
+            {heroDisciplines.map((item, i) => (
+              <li key={item} className="flex items-center gap-3">
+                {i > 0 && (
+                  <span aria-hidden="true" className="size-1 rounded-full bg-line-strong" />
+                )}
+                {item}
+              </li>
+            ))}
+          </motion.ul>
 
+          <motion.div
+            {...rise(0.3)}
+            className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-center"
+          >
+            <Button href={primaryCta.href}>
+              {primaryCta.label}
+              <ArrowRight className="size-4" />
+            </Button>
+            <Button href="/#projects" variant="secondary">
+              Explore Our Work
+            </Button>
+          </motion.div>
+        </div>
+
+        {/* ---------- Visual ---------- */}
         <motion.div
-          custom={0.24}
-          initial="hidden"
-          animate="visible"
-          variants={reveal}
-          className="mt-9 flex flex-wrap items-center gap-4"
+          initial={reduce ? false : { opacity: 0, scale: 0.94 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{
+            duration: reduce ? 0 : 1.1,
+            delay: reduce ? 0 : 0.2,
+            ease: [0.22, 1, 0.36, 1],
+          }}
+          className="relative mx-auto w-full max-w-[19rem] sm:max-w-[23rem] lg:max-w-none"
         >
-          <Button href="/contact">
-            Start a conversation
-            <ArrowUpRight className="size-4" />
-          </Button>
-          <Button href="/services" variant="secondary">
-            See what we build
-          </Button>
+          <HeroVisual />
         </motion.div>
-      </Section>
+      </Container>
     </div>
   );
 }
