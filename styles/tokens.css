@@ -1,0 +1,106 @@
+/**
+ * Design tokens — Opportunity Lens
+ *
+ * Direction: dark, premium, technological. A near-black base lets a
+ * restrained electric cyan (primary signal) and a quieter violet
+ * (secondary, used mostly in gradients/glows rather than solid fills)
+ * do the work — not neon saturation, not glassmorphism, not stock
+ * "AI" imagery. Borders stay hairline-thin; elevation comes from soft
+ * glow and subtle gradient sheen rather than heavy drop shadows.
+ */
+
+:root {
+  /* ---- Surfaces ---- */
+  --color-bg: #08090c;           /* page background */
+  --color-bg-elevated: #0e1014;  /* header/footer, raised chrome */
+  --color-surface: #131519;      /* default card surface */
+  --color-surface-hover: #191c22;
+  --color-surface-2: #17191f;    /* nested surface, e.g. code/inputs */
+
+  /* ---- Borders ---- */
+  --color-border: #22252c;        /* hairline default */
+  --color-border-strong: #33363f; /* hover / active hairline */
+
+  /* ---- Text ---- */
+  --color-text: #f3f4f7;      /* primary */
+  --color-text-soft: #c7cad3; /* secondary */
+  --color-muted: #888c97;     /* tertiary / captions */
+
+  /* ---- Accents ---- */
+  --color-cyan: #3ecbf0;        /* primary accent — "signal" */
+  --color-cyan-strong: #1fb0da; /* hover/active state */
+  --color-cyan-soft: #bdeaf9;   /* on-dark text tint, rarely used */
+
+  --color-violet: #8b7ef2;      /* secondary accent — used sparingly */
+  --color-violet-strong: #6f61e0;
+
+  /* ---- Gradients (composited, not Tailwind color tokens) ---- */
+  --gradient-brand: linear-gradient(135deg, var(--color-cyan) 0%, var(--color-violet) 100%);
+  --gradient-brand-soft: linear-gradient(135deg, rgba(62, 203, 240, 0.16) 0%, rgba(139, 126, 242, 0.16) 100%);
+  --gradient-surface-sheen: linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0) 60%);
+  --gradient-hero-glow: radial-gradient(60% 50% at 50% 0%, rgba(62, 203, 240, 0.16) 0%, rgba(62, 203, 240, 0) 70%);
+  --gradient-edge-fade: linear-gradient(180deg, transparent 0%, var(--color-bg) 100%);
+
+  /* ---- Elevation: shadow + glow ---- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-2: 0 12px 32px rgba(0, 0, 0, 0.45);
+  --glow-cyan-sm: 0 0 0 1px rgba(62, 203, 240, 0.35), 0 0 18px rgba(62, 203, 240, 0.16);
+  --glow-cyan-md: 0 0 0 1px rgba(62, 203, 240, 0.4), 0 0 36px rgba(62, 203, 240, 0.22);
+  --glow-violet-sm: 0 0 24px rgba(139, 126, 242, 0.18);
+
+  /* ---- Radius ---- */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.875rem;
+  --radius-lg: 1.25rem;
+  --radius-xl: 1.75rem;
+  --radius-full: 999px;
+
+  /* ---- Spacing rhythm ---- */
+  --space-section-y: clamp(4.5rem, 3.5rem + 4vw, 8rem);
+  --container-max: 80rem;
+  --container-max-narrow: 46rem;
+
+  /* ---- Motion ---- */
+  --ease-standard: cubic-bezier(0.22, 1, 0.36, 1);
+  --duration-fast: 150ms;
+  --duration-base: 300ms;
+  --duration-slow: 600ms;
+}
+
+/* Map tokens into Tailwind's theme so utilities like bg-surface,
+   text-muted, border-line, rounded-lg, etc. all resolve to the values
+   above. Colors defined as plain hex here also get automatic Tailwind
+   opacity modifiers for free (e.g. bg-cyan/10, border-cyan/40). */
+@theme inline {
+  --color-bg: var(--color-bg);
+  --color-bg-elevated: var(--color-bg-elevated);
+  --color-surface: var(--color-surface);
+  --color-surface-hover: var(--color-surface-hover);
+  --color-surface-2: var(--color-surface-2);
+
+  --color-line: var(--color-border);
+  --color-line-strong: var(--color-border-strong);
+
+  --color-ink: var(--color-text);
+  --color-ink-soft: var(--color-text-soft);
+  --color-muted: var(--color-muted);
+
+  --color-cyan: var(--color-cyan);
+  --color-cyan-strong: var(--color-cyan-strong);
+  --color-cyan-soft: var(--color-cyan-soft);
+  --color-violet: var(--color-violet);
+  --color-violet-strong: var(--color-violet-strong);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* Custom breakpoints: a small-phone tier under Tailwind's default
+     `sm`, and a wide-desktop tier above `2xl`. */
+  --breakpoint-xs: 22.5rem; /* 360px */
+  --breakpoint-3xl: 90rem;  /* 1440px */
+}
