@@ -3,6 +3,7 @@ import "@fontsource-variable/unbounded";
 import "@fontsource-variable/manrope";
 import { siteConfig } from "@/data/site";
 import "./globals.css";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -62,6 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-paper text-ink font-sans">
         {children}
+        <Analytics />
       </body>
     </html>
   );
