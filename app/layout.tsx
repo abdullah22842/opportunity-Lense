@@ -7,10 +7,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
   title: {
-    default: `${siteConfig.name} — ${siteConfig.tagline}`,
-    template: `%s — ${siteConfig.name}`,
+    default: `${siteConfig.name} | ${siteConfig.tagline}`,
+    template: `%s | ${siteConfig.name}`,
   },
   description: siteConfig.description,
+  alternates: { canonical: "/" },
   keywords: [...siteConfig.keywords],
   authors: [{ name: siteConfig.name, url: siteConfig.url }],
   creator: siteConfig.name,
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
     locale: siteConfig.locale,
     url: siteConfig.url,
     siteName: siteConfig.name,
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: `${siteConfig.name} | ${siteConfig.tagline}`,
     description: siteConfig.description,
     images: [
       {
@@ -41,14 +42,16 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: `${siteConfig.name} — ${siteConfig.tagline}`,
+    title: `${siteConfig.name} | ${siteConfig.tagline}`,
     description: siteConfig.description,
     images: ["/og-image.png"],
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: { index: true, follow: true, "max-image-preview": "large" },
   },
+  formatDetection: { telephone: false, address: false, email: false },
 };
 
 export const viewport: Viewport = {
@@ -60,7 +63,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-paper text-ink font-sans">
+      <body className="min-h-full flex flex-col bg-bg text-ink font-sans">
         {children}
       </body>
     </html>
