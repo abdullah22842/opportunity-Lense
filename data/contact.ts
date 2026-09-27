@@ -26,7 +26,7 @@ export const contactChannels: ContactChannel[] = [
   {
     id: "email",
     label: "Email",
-    value: "eaglesvisionspro@gmail.com"
+    value: "eaglesvisionspro@gmail.com",
     href: null,
     placeholderNote: "Address to be published",
     icon: "mail",
@@ -42,8 +42,8 @@ export const contactChannels: ContactChannel[] = [
   {
     id: "github",
     label: "GitHub",
-    value: null,
-    href: null,
+    value: "opportunity-lens",
+    href:"https://github.com/abdullah22842?tab=repositories",
     placeholderNote: "Profile to be published",
     icon: "github",
   },
