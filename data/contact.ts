@@ -26,7 +26,7 @@ export const contactChannels: ContactChannel[] = [
   {
     id: "email",
     label: "Email",
-    value: null,
+    value: "eaglesvisionspro@gmail.com"
     href: null,
     placeholderNote: "Address to be published",
     icon: "mail",
