@@ -43,7 +43,7 @@ export const contactChannels: ContactChannel[] = [
     id: "github",
     label: "GitHub",
     value: null,
-    href: null,
+    href: https://www.linkedin.com/company/opportunity-lens,
     placeholderNote: "Profile to be published",
     icon: "github",
   },
