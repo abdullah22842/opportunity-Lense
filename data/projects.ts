@@ -28,15 +28,38 @@ export type ProjectCategory =
   | "Software"
   | "Automation";
 
+export type ProjectLinks = {
+  /** Public GitHub repository for this project. */
+  github?: string;
+  /** Live demo. */
+  demo?: string;
+  /** Paper or other research write-up. */
+  paper?: string;
+};
+
 export type Project = {
   id: string;
   category: ProjectCategory;
   title: string;
   description: string;
   tags: string[];
+  /**
+   * In-site link. Placeholder cards point at the work section.
+   * Real projects can keep this, or rely on `links` instead.
+   */
   href: string;
   /** Marks the card as an illustrative example rather than delivered work. */
   placeholder?: boolean;
+  /** Shown as a small label. Leave unset until a project should lead the grid. */
+  featured?: boolean;
+  /** Path under /public, or an absolute image URL. */
+  image?: string;
+  imageAlt?: string;
+  /**
+   * Public references only. Contact-form uploads do not create repos;
+   * add a GitHub URL here when the team decides a project is public.
+   */
+  links?: ProjectLinks;
 };
 
 export const projects: Project[] = [

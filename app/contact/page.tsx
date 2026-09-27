@@ -50,9 +50,8 @@ export default async function ContactPage({
     ? (requested as string)
     : "";
 
-  // Only show channels that actually exist. An empty card of
-  // "to be published" labels reads as unfinished on a live site.
   const liveChannels = contactChannels.filter((c) => c.value);
+  const channels = liveChannels.length > 0 ? liveChannels : contactChannels;
 
   return (
     <>
@@ -73,19 +72,46 @@ export default async function ContactPage({
           <ContactForm defaultProjectType={defaultProjectType} />
 
           <aside className="flex h-fit flex-col gap-6">
-            {liveChannels.length > 0 && (
-              <div className="card p-6">
-                <div className="relative z-10">
-                  <h2 className="text-lg! font-semibold">
-                    Other ways to reach us
-                  </h2>
-                  <ul className="mt-5 space-y-4">
-                    {liveChannels.map((channel) => {
-                      const Icon = channelIcons[channel.icon];
-                      const href = channel.href ?? channel.value!;
-                      const external = href.startsWith("http");
-                      return (
-                        <li key={channel.id}>
+            <div className="card p-6">
+              <div className="relative z-10">
+                <h2 className="text-lg! font-semibold">
+                  Other ways to reach us
+                </h2>
+                {liveChannels.length === 0 && (
+                  <p className="mt-3 text-sm text-ink-soft">
+                    These channels are being set up. The form is the fastest
+                    route in the meantime.
+                  </p>
+                )}
+                <ul className="mt-5 space-y-4">
+                  {channels.map((channel) => {
+                    const Icon = channelIcons[channel.icon];
+                    const href = channel.value
+                      ? channel.href ??
+                        (channel.value.includes("@")
+                          ? `mailto:${channel.value}`
+                          : channel.value)
+                      : null;
+                    const external = href?.startsWith("http") ?? false;
+                    const body = (
+                      <>
+                        <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-line bg-surface-2">
+                          <Icon className="size-4 text-ink-soft group-hover:text-cyan" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-semibold text-ink">
+                            {channel.label}
+                          </span>
+                          <span className="block text-sm break-words text-muted group-hover:text-cyan">
+                            {channel.value ?? channel.placeholderNote}
+                          </span>
+                        </span>
+                      </>
+                    );
+
+                    return (
+                      <li key={channel.id}>
+                        {href ? (
                           <a
                             href={href}
                             {...(external
@@ -93,25 +119,19 @@ export default async function ContactPage({
                               : {})}
                             className="group flex items-center gap-3"
                           >
-                            <span className="flex size-9 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border border-line bg-surface-2">
-                              <Icon className="size-4 text-ink-soft group-hover:text-cyan" />
-                            </span>
-                            <span>
-                              <span className="block text-sm font-semibold text-ink">
-                                {channel.label}
-                              </span>
-                              <span className="block text-sm text-muted group-hover:text-cyan">
-                                {channel.value}
-                              </span>
-                            </span>
+                            {body}
                           </a>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
+                        ) : (
+                          <div className="group flex items-center gap-3">
+                            {body}
+                          </div>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
               </div>
-            )}
+            </div>
 
             <div className="card p-6">
               <div className="relative z-10">

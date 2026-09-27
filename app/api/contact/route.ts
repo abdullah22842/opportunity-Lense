@@ -1,29 +1,33 @@
 import { NextResponse } from "next/server";
-import { validateEnquiry, emptyEnquiry, type EnquiryValues } from "@/lib/contact";
+import {
+  emptyEnquiry,
+  validateEnquiry,
+  validateFiles,
+  type EnquiryErrors,
+  type EnquiryValues,
+} from "@/lib/contact";
+import { sendTeamEnquiry, sendVisitorConfirmation } from "@/lib/email";
+import {
+  deleteAttachments,
+  insertInquiry,
+  isStorageConfigured,
+  uploadAttachments,
+} from "@/lib/inquiries";
 
 /**
  * POST /api/contact
  *
- * Receives the enquiry form, validates it again on the server (never
- * trust the browser), and emails it to the team through Resend.
- *
- * Required environment variables (set them in Vercel → Settings →
- * Environment Variables, and in .env.local for local development):
- *   RESEND_API_KEY      API key from https://resend.com/api-keys
- *   CONTACT_TO_EMAIL    Inbox that receives enquiries
- * Optional:
- *   CONTACT_FROM_EMAIL  Sender, e.g. "Opportunity Lens <hello@yourdomain.com>".
- *                       Defaults to Resend's test sender, which can only
- *                       deliver to the email you signed up to Resend with.
+ * Validates the enquiry, stores it in Supabase, uploads any attachments
+ * to a private bucket, then emails the team. Email failure does not
+ * fail the request once the row is saved. Missing Supabase config
+ * returns 503 so the form can say the enquiry was not stored.
  */
 
-const FROM_DEFAULT = "Opportunity Lens <onboarding@resend.dev>";
+export const runtime = "nodejs";
 
-// Best-effort flood protection: max 5 enquiries per IP per 10 minutes.
-// Serverless instances don't share memory, so this is a speed bump,
-// not a guarantee.
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_PER_WINDOW = 5;
+const MAX_BODY_BYTES = 4_500_000;
 const hits = new Map<string, number[]>();
 
 function rateLimited(ip: string) {
@@ -34,76 +38,101 @@ function rateLimited(ip: string) {
   return recent.length > MAX_PER_WINDOW;
 }
 
+function clientIp(request: Request) {
+  return (
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+  );
+}
+
+function fieldErrors(errors: EnquiryErrors) {
+  return NextResponse.json(
+    { error: "Invalid enquiry", errors },
+    { status: 400 }
+  );
+}
+
 export async function POST(request: Request) {
-  const apiKey = process.env.RESEND_API_KEY;
-  const to = process.env.CONTACT_TO_EMAIL;
-  if (!apiKey || !to) {
-    console.error("Contact form: RESEND_API_KEY or CONTACT_TO_EMAIL is not set.");
+  if (!isStorageConfigured()) {
+    console.error(
+      "Contact form: NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set."
+    );
     return NextResponse.json({ error: "Not configured" }, { status: 503 });
   }
 
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
-  if (rateLimited(ip)) {
+  const declaredLength = Number(request.headers.get("content-length") ?? 0);
+  if (declaredLength > MAX_BODY_BYTES) {
+    return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+  }
+
+  if (rateLimited(clientIp(request))) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let body: unknown;
+  let form: FormData;
   try {
-    body = await request.json();
+    form = await request.formData();
   } catch {
-    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    return NextResponse.json({ error: "Invalid form data" }, { status: 400 });
   }
 
-  // Keep only the fields we expect, coerced to strings.
-  const raw = (body ?? {}) as Record<string, unknown>;
   const values: EnquiryValues = { ...emptyEnquiry };
   for (const key of Object.keys(emptyEnquiry) as (keyof EnquiryValues)[]) {
-    if (typeof raw[key] === "string") values[key] = raw[key] as string;
+    const raw = form.get(key);
+    if (typeof raw === "string") values[key] = raw;
   }
 
   // Honeypot filled in: pretend success so bots learn nothing.
-  if (values.website) return NextResponse.json({ ok: true });
+  if (values.website.trim()) return NextResponse.json({ ok: true });
 
   const errors = validateEnquiry(values);
-  if (Object.keys(errors).length > 0) {
-    return NextResponse.json({ error: "Invalid enquiry", errors }, { status: 400 });
-  }
+  const files = form
+    .getAll("attachment")
+    .filter((entry): entry is File => entry instanceof File && entry.size > 0);
+  const fileError = validateFiles(files);
+  if (fileError) errors.attachment = fileError;
 
-  const text = [
-    `Name: ${values.name.trim()}`,
-    `Email: ${values.email.trim()}`,
-    `Company: ${values.company.trim() || "-"}`,
-    `Project type: ${values.projectType}`,
-    `Budget: ${values.budget || "Not given"}`,
-    "",
-    values.message.trim(),
-  ].join("\n");
+  if (Object.keys(errors).length > 0) return fieldErrors(errors);
+
+  const id = crypto.randomUUID();
+  let paths: string[] = [];
 
   try {
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: process.env.CONTACT_FROM_EMAIL || FROM_DEFAULT,
-        to: [to],
-        // Hitting "Reply" in your inbox answers the person directly.
-        reply_to: values.email.trim(),
-        subject: `New enquiry: ${values.projectType} from ${values.name.trim()}`,
-        text,
-      }),
+    if (files.length > 0) paths = await uploadAttachments(id, files);
+    await insertInquiry({
+      id,
+      name: values.name.trim(),
+      email: values.email.trim(),
+      organisation: values.company.trim(),
+      projectType: values.projectType,
+      budget: values.budget,
+      message: values.message.trim(),
+      preferredContact: values.preferredContact,
+      attachmentPaths: paths,
     });
-
-    if (!res.ok) {
-      console.error("Contact form: Resend error", res.status, await res.text());
-      return NextResponse.json({ error: "Send failed" }, { status: 502 });
-    }
   } catch (err) {
-    console.error("Contact form: network error", err);
-    return NextResponse.json({ error: "Send failed" }, { status: 502 });
+    console.error("Contact form: save failed", err);
+    if (paths.length > 0) await deleteAttachments(paths);
+    return NextResponse.json({ error: "Save failed" }, { status: 502 });
+  }
+
+  const mail = {
+    name: values.name.trim(),
+    email: values.email.trim(),
+    organisation: values.company.trim(),
+    projectType: values.projectType,
+    budget: values.budget,
+    message: values.message.trim(),
+    preferredContact: values.preferredContact,
+    submittedAt: new Date().toISOString(),
+    attachments: paths,
+  };
+
+  try {
+    await sendTeamEnquiry(mail);
+    await sendVisitorConfirmation(mail);
+  } catch (err) {
+    // The enquiry is already stored. Mail can be retried from the row.
+    console.error("Contact form: email failed", err);
   }
 
   return NextResponse.json({ ok: true });

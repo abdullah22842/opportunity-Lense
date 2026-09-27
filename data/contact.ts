@@ -76,3 +76,9 @@ export const budgetRanges = [
   "Over $50,000",
   "Prefer to discuss",
 ] as const;
+
+/**
+ * How the visitor would like a reply. Optional on the form.
+ * No phone number is collected — we don't invent a channel we don't use.
+ */
+export const contactMethods = ["Email", "Video call"] as const;

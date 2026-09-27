@@ -3,12 +3,15 @@
 import { useId, useRef, useState } from "react";
 import { ArrowRight, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { budgetRanges, projectTypes } from "@/data/contact";
+import { budgetRanges, contactMethods, projectTypes } from "@/data/contact";
 import {
   emptyEnquiry,
+  FILE_ACCEPT,
+  MAX_FILES,
   MESSAGE_MAX,
   submitEnquiry,
   validateEnquiry,
+  validateFiles,
   type EnquiryErrors,
   type EnquiryValues,
   type SubmitResult,
@@ -40,8 +43,11 @@ export function ContactForm({
   const [errors, setErrors] = useState<EnquiryErrors>({});
   const [submitted, setSubmitted] = useState(false);
   const [pending, setPending] = useState(false);
+  const [files, setFiles] = useState<File[]>([]);
   const [result, setResult] = useState<SubmitResult | null>(null);
   const formRef = useRef<HTMLFormElement>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const lock = useRef(false);
 
   const fieldId = (name: string) => `${formId}-${name}`;
   const errorId = (name: string) => `${formId}-${name}-error`;
@@ -53,40 +59,66 @@ export function ContactForm({
     const next = { ...values, [name]: value };
     setValues(next);
     // Only re-check after a failed submit, so typing isn't interrupted.
-    if (submitted) setErrors(validateEnquiry(next));
+    if (submitted) {
+      const nextErrors = validateEnquiry(next);
+      const fileError = validateFiles(files);
+      if (fileError) nextErrors.attachment = fileError;
+      setErrors(nextErrors);
+    }
   }
 
-  function describedBy(name: keyof EnquiryValues, extra?: string) {
+  function describedBy(
+    name: keyof EnquiryValues | "attachment",
+    extra?: string
+  ) {
     const ids = [errors[name] ? errorId(name) : null, extra ?? null].filter(
       Boolean
     );
     return ids.length ? ids.join(" ") : undefined;
   }
 
+  function focusField(name: string) {
+    const el = formRef.current?.querySelector<HTMLElement>(
+      `#${CSS.escape(fieldId(name))}`
+    );
+    el?.focus();
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (lock.current) return;
     setSubmitted(true);
     setResult(null);
 
     const found = validateEnquiry(values);
+    const fileError = validateFiles(files);
+    if (fileError) found.attachment = fileError;
     setErrors(found);
 
     const firstInvalid = Object.keys(found)[0];
     if (firstInvalid) {
-      const el = formRef.current?.querySelector<HTMLElement>(
-        `#${CSS.escape(fieldId(firstInvalid))}`
-      );
-      el?.focus();
+      focusField(firstInvalid);
       return;
     }
 
+    lock.current = true;
     setPending(true);
-    const outcome = await submitEnquiry(values);
+    const outcome = await submitEnquiry(values, files);
     setPending(false);
+    lock.current = false;
     setResult(outcome);
+
+    if (outcome.status === "invalid") {
+      setErrors(outcome.errors);
+      const first = Object.keys(outcome.errors)[0];
+      if (first) focusField(first);
+      return;
+    }
 
     if (outcome.status === "sent") {
       setValues({ ...emptyEnquiry, projectType: defaultProjectType });
+      setFiles([]);
+      if (fileRef.current) fileRef.current.value = "";
       setSubmitted(false);
       setErrors({});
     }
@@ -138,7 +170,10 @@ export function ContactForm({
           {result?.status === "sent" && (
             <div className="mt-5 flex items-start gap-2 rounded-[var(--radius-sm)] border border-cyan/40 bg-cyan/8 p-4 text-sm text-ink-soft">
               <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-cyan" />
-              <p>Thanks — your enquiry is in. We&apos;ll be in touch shortly.</p>
+              <p>
+                Thanks — your enquiry has been received. We&apos;ll review the
+                details and get back to you.
+              </p>
             </div>
           )}
 
@@ -163,9 +198,9 @@ export function ContactForm({
           )}
         </div>
 
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
+        <div className="mt-6 grid min-w-0 gap-5 sm:grid-cols-2">
           {/* Name */}
-          <div>
+          <div className="min-w-0">
             <label htmlFor={fieldId("name")} className="field-label">
               Name
             </label>
@@ -189,7 +224,7 @@ export function ContactForm({
           </div>
 
           {/* Email */}
-          <div>
+          <div className="min-w-0">
             <label htmlFor={fieldId("email")} className="field-label">
               Email
             </label>
@@ -214,7 +249,7 @@ export function ContactForm({
           </div>
 
           {/* Company */}
-          <div>
+          <div className="min-w-0">
             <label htmlFor={fieldId("company")} className="field-label">
               Company / Organisation{" "}
               <span className="field-optional">(optional)</span>
@@ -238,7 +273,7 @@ export function ContactForm({
           </div>
 
           {/* Project type */}
-          <div>
+          <div className="min-w-0">
             <label htmlFor={fieldId("projectType")} className="field-label">
               Project type
             </label>
@@ -292,6 +327,35 @@ export function ContactForm({
             </span>
           </div>
 
+          {/* Preferred contact */}
+          <div className="min-w-0 sm:col-span-2">
+            <label htmlFor={fieldId("preferredContact")} className="field-label">
+              Preferred contact{" "}
+              <span className="field-optional">(optional)</span>
+            </label>
+            <select
+              id={fieldId("preferredContact")}
+              name="preferredContact"
+              value={values.preferredContact}
+              onChange={(e) => update("preferredContact", e.target.value)}
+              aria-invalid={errors.preferredContact ? true : undefined}
+              aria-describedby={describedBy("preferredContact")}
+              className="field-control"
+            >
+              <option value="">No preference</option>
+              {contactMethods.map((method) => (
+                <option key={method} value={method}>
+                  {method}
+                </option>
+              ))}
+            </select>
+            {errors.preferredContact && (
+              <span id={errorId("preferredContact")} className="field-error">
+                {errors.preferredContact}
+              </span>
+            )}
+          </div>
+
           {/* Message */}
           <div className="sm:col-span-2">
             <label htmlFor={fieldId("message")} className="field-label">
@@ -326,6 +390,52 @@ export function ContactForm({
                 {values.message.length}/{MESSAGE_MAX}
               </span>
             </div>
+          </div>
+
+          {/* Attachment */}
+          <div className="min-w-0 sm:col-span-2">
+            <label htmlFor={fieldId("attachment")} className="field-label">
+              Project files{" "}
+              <span className="field-optional">(optional)</span>
+            </label>
+            <input
+              ref={fileRef}
+              id={fieldId("attachment")}
+              name="attachment"
+              type="file"
+              multiple
+              accept={FILE_ACCEPT}
+              onChange={(e) => {
+                const next = Array.from(e.target.files ?? []);
+                setFiles(next);
+                if (submitted) {
+                  const fileError = validateFiles(next);
+                  setErrors((current) => {
+                    const copy = { ...current };
+                    if (fileError) copy.attachment = fileError;
+                    else delete copy.attachment;
+                    return copy;
+                  });
+                }
+              }}
+              aria-invalid={errors.attachment ? true : undefined}
+              aria-describedby={
+                errors.attachment
+                  ? errorId("attachment")
+                  : `${formId}-attachment-hint`
+              }
+              className="field-control"
+            />
+            {errors.attachment ? (
+              <span id={errorId("attachment")} className="field-error">
+                {errors.attachment}
+              </span>
+            ) : (
+              <span id={`${formId}-attachment-hint`} className="field-hint">
+                PDF, Word, text, or an image. Up to {MAX_FILES} files, 3.5 MB
+                combined. Files stay private.
+              </span>
+            )}
           </div>
         </div>
 

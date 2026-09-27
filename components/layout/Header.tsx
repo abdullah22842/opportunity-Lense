@@ -62,11 +62,11 @@ export function Header() {
           : "border-b border-transparent bg-transparent"
       )}
     >
-      <Container className="flex h-[4.5rem] items-center justify-between gap-6">
+      <Container className="flex h-[4.5rem] items-center justify-between gap-3 sm:gap-6">
         {/* Brand lockup */}
         <Link
           href="/"
-          className="group flex items-center gap-3"
+          className="group flex min-w-0 items-center gap-2.5 sm:gap-3"
           aria-label={`${siteConfig.name} — home`}
         >
           <svg
@@ -95,7 +95,7 @@ export function Header() {
           </svg>
 
           <span className="flex flex-col leading-none">
-            <span className="font-display whitespace-nowrap text-[0.82rem] tracking-[0.02em] xs:text-[0.9rem] sm:text-[1.05rem]">
+            <span className="font-display whitespace-nowrap text-[0.7rem] tracking-[0.02em] xs:text-[0.9rem] sm:text-[1.05rem]">
               OPPORTUNITY LENS
             </span>
             <span className="mt-1.5 whitespace-nowrap text-[0.5rem] tracking-[0.16em] text-muted xs:text-[0.55rem] sm:text-[0.65rem] sm:tracking-[0.22em]">

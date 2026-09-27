@@ -1,17 +1,13 @@
 import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {
-  output: "export",
-  trailingSlash: true,
-  images: {
-    unoptimized: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-};
+/**
+ * Normal Node deployment for Vercel.
+ *
+ * `output: "export"` was removed on purpose. A static export cannot run
+ * the contact API, store enquiries, or accept attachments. Trailing-slash
+ * export was also sending /contact at hosts that never received a
+ * contact/index.html file.
+ */
+const nextConfig: NextConfig = {};
 
 export default nextConfig;

@@ -1,19 +1,14 @@
 /**
  * Enquiry validation and submission.
  *
- * ── Connecting a backend ────────────────────────────────────────────
- * Set NEXT_PUBLIC_CONTACT_ENDPOINT to a URL that accepts a JSON POST.
- * That can be:
- *   • a Next.js route handler you write at app/api/contact/route.ts
- *     → NEXT_PUBLIC_CONTACT_ENDPOINT="/api/contact"
- *   • a hosted form service (Formspree, Basin, Web3Forms, …)
- *     → NEXT_PUBLIC_CONTACT_ENDPOINT="https://formspree.io/f/xxxxxxx"
- *
- * Until that variable is set, `submitEnquiry` returns status
- * "not-configured". The form then tells the person plainly that the
- * form isn't live yet rather than showing a false confirmation — never
- * report a message as sent when nothing received it.
+ * The browser posts multipart form data to /api/contact. Storage and
+ * email are configured with server-only environment variables — nothing
+ * secret is read here. If the server has no database configured it
+ * answers "not-configured", and the form says so instead of pretending
+ * the enquiry was received.
  */
+
+import { budgetRanges, contactMethods, projectTypes } from "@/data/contact";
 
 export type EnquiryValues = {
   name: string;
@@ -22,11 +17,14 @@ export type EnquiryValues = {
   projectType: string;
   budget: string;
   message: string;
+  preferredContact: string;
   /** Honeypot — must stay empty. Bots fill it in; people never see it. */
   website: string;
 };
 
-export type EnquiryErrors = Partial<Record<keyof EnquiryValues, string>>;
+export type EnquiryErrors = Partial<
+  Record<keyof EnquiryValues | "attachment", string>
+>;
 
 export const emptyEnquiry: EnquiryValues = {
   name: "",
@@ -35,6 +33,7 @@ export const emptyEnquiry: EnquiryValues = {
   projectType: "",
   budget: "",
   message: "",
+  preferredContact: "",
   website: "",
 };
 
@@ -42,6 +41,49 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export const MESSAGE_MIN = 20;
 export const MESSAGE_MAX = 2000;
+
+/** Vercel request bodies top out near 4.5 MB, so the cap sits under that. */
+export const MAX_FILES = 3;
+export const MAX_TOTAL_BYTES = Math.floor(3.5 * 1024 * 1024);
+
+const ALLOWED_EXT = new Set([
+  "pdf",
+  "png",
+  "jpg",
+  "jpeg",
+  "webp",
+  "txt",
+  "doc",
+  "docx",
+]);
+
+const BLOCKED_EXT = new Set([
+  "exe",
+  "js",
+  "mjs",
+  "sh",
+  "bat",
+  "cmd",
+  "html",
+  "htm",
+  "svg",
+  "php",
+]);
+
+export const FILE_ACCEPT = ".pdf,.png,.jpg,.jpeg,.webp,.txt,.doc,.docx";
+
+const ALLOWED_LISTS = {
+  projectType: projectTypes as readonly string[],
+  budget: budgetRanges as readonly string[],
+  preferredContact: contactMethods as readonly string[],
+};
+
+function extensionOf(name: string) {
+  const base = name.split(/[/\\]/).pop() ?? "";
+  const dot = base.lastIndexOf(".");
+  if (dot <= 0) return "";
+  return base.slice(dot + 1).toLowerCase();
+}
 
 /**
  * Validate the whole form. Returns an object keyed by field name;
@@ -66,8 +108,22 @@ export function validateEnquiry(values: EnquiryValues): EnquiryErrors {
     errors.company = "Organisation name is too long — 120 characters maximum.";
   }
 
-  if (!values.projectType) {
+  if (
+    !values.projectType ||
+    !ALLOWED_LISTS.projectType.includes(values.projectType)
+  ) {
     errors.projectType = "Choose the closest project type.";
+  }
+
+  if (values.budget && !ALLOWED_LISTS.budget.includes(values.budget)) {
+    errors.budget = "Choose a budget range from the list.";
+  }
+
+  if (
+    values.preferredContact &&
+    !ALLOWED_LISTS.preferredContact.includes(values.preferredContact)
+  ) {
+    errors.preferredContact = "Choose a contact method from the list.";
   }
 
   const message = values.message.trim();
@@ -82,41 +138,95 @@ export function validateEnquiry(values: EnquiryValues): EnquiryErrors {
   return errors;
 }
 
+/** Client and server share this so a bad file is caught before upload. */
+export function validateFiles(files: File[]): string | undefined {
+  const real = files.filter((file) => file.size > 0);
+  if (real.length > MAX_FILES) {
+    return `Attach up to ${MAX_FILES} files.`;
+  }
+
+  let total = 0;
+  for (const file of real) {
+    total += file.size;
+    const ext = extensionOf(file.name);
+    const parts = (file.name.split(/[/\\]/).pop() ?? "").toLowerCase().split(".");
+    const blocked = parts.slice(1).some((part) => BLOCKED_EXT.has(part));
+    if (!ALLOWED_EXT.has(ext) || blocked) {
+      return "Use a PDF, Word document, text file, or PNG, JPG, or WebP image.";
+    }
+  }
+
+  if (total > MAX_TOTAL_BYTES) {
+    return "Attachments are too large — keep the total under 3.5 MB.";
+  }
+
+  return undefined;
+}
+
+export function safeFileName(name: string) {
+  const base = (name.split(/[/\\]/).pop() ?? "file").replace(/[^\w.\-]+/g, "_");
+  const trimmed = base.replace(/^\.+/, "").slice(0, 80);
+  return trimmed || "file";
+}
+
 export type SubmitResult =
   | { status: "sent" }
   | { status: "not-configured" }
+  | { status: "invalid"; errors: EnquiryErrors }
   | { status: "error"; message: string };
 
-const ENDPOINT = process.env.NEXT_PUBLIC_CONTACT_ENDPOINT ?? "";
-
-export function isContactConfigured() {
-  return ENDPOINT.length > 0;
-}
-
 export async function submitEnquiry(
-  values: EnquiryValues
+  values: EnquiryValues,
+  files: File[]
 ): Promise<SubmitResult> {
-  // Honeypot tripped — accept silently so bots don't learn anything.
-  if (values.website) return { status: "sent" };
-
-  if (!ENDPOINT) return { status: "not-configured" };
+  const body = new FormData();
+  body.set("name", values.name.trim());
+  body.set("email", values.email.trim());
+  body.set("company", values.company.trim());
+  body.set("projectType", values.projectType);
+  body.set("budget", values.budget);
+  body.set("message", values.message.trim());
+  body.set("preferredContact", values.preferredContact);
+  body.set("website", values.website);
+  for (const file of files) {
+    if (file.size > 0) body.append("attachment", file);
+  }
 
   try {
-    const response = await fetch(ENDPOINT, {
+    const response = await fetch("/api/contact", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({
-        name: values.name.trim(),
-        email: values.email.trim(),
-        company: values.company.trim(),
-        projectType: values.projectType,
-        budget: values.budget,
-        message: values.message.trim(),
-      }),
+      headers: { Accept: "application/json" },
+      body,
     });
+
+    if (response.status === 503) return { status: "not-configured" };
+
+    if (response.status === 400) {
+      const data = (await response.json().catch(() => null)) as {
+        errors?: EnquiryErrors;
+      } | null;
+      if (data?.errors && Object.keys(data.errors).length > 0) {
+        return { status: "invalid", errors: data.errors };
+      }
+      return {
+        status: "error",
+        message: "Some details need correcting before this can be sent.",
+      };
+    }
+
+    if (response.status === 413) {
+      return {
+        status: "error",
+        message: "Attachments are too large — keep the total under 3.5 MB.",
+      };
+    }
+
+    if (response.status === 429) {
+      return {
+        status: "error",
+        message: "Too many enquiries from this network. Please try again shortly.",
+      };
+    }
 
     if (!response.ok) {
       return {
